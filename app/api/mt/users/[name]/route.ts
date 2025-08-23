@@ -7,21 +7,27 @@ import {
 	updateHotspotUser,
 } from "@/lib/routeros-rest";
 
-type Params = { params: { name: string } };
+// Helpers to keep param typing clean
+type NameParams = { name: string };
+type RouteCtx = { params: Promise<NameParams> };
 
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, ctx: RouteCtx) {
+	const { name } = await ctx.params; // <-- changed
 	const body = await req.json();
+
 	if ("disabled" in body) {
 		const { disabled } = ToggleSchema.parse(body);
-		const updated = await setHotspotUserDisabled(params.name, disabled);
+		const updated = await setHotspotUserDisabled(name, disabled);
 		return NextResponse.json(updated);
 	}
+
 	const patch = UpdateUserSchema.parse(body);
-	const updated = await updateHotspotUser(params.name, patch);
+	const updated = await updateHotspotUser(name, patch);
 	return NextResponse.json(updated);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-	await deleteHotspotUser(params.name);
+export async function DELETE(_req: NextRequest, ctx: RouteCtx) {
+	const { name } = await ctx.params; // <-- changed
+	await deleteHotspotUser(name);
 	return new Response(null, { status: 204 });
 }
