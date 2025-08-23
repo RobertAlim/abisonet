@@ -4,7 +4,6 @@ import { CreateUserSchema } from "@/lib/z";
 import { createHotspotUser, listHotspotUsers } from "@/lib/routeros-rest";
 import { db } from "@/lib/db";
 import { mtUsers, routers } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
 
 export async function GET() {
 	const data = await listHotspotUsers();
