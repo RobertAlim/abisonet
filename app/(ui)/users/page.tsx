@@ -28,7 +28,7 @@ export default function UsersPage() {
 	const usersQ = useQuery<User[]>({
 		queryKey: ["mt-users"],
 		queryFn: async () => {
-			const r = await fetch("/api/mt/users");
+			const r = await fetch("/api/mt/ppp");
 			if (!r.ok) throw new Error("Failed to fetch users");
 			return (await r.json()) as User[];
 		},
@@ -37,7 +37,7 @@ export default function UsersPage() {
 
 	const toggleM = useMutation({
 		mutationFn: async (p: { name: string; disabled: boolean }) => {
-			const r = await fetch(`/api/mt/users/${encodeURIComponent(p.name)}`, {
+			const r = await fetch(`/api/mt/ppp/${encodeURIComponent(p.name)}`, {
 				method: "PATCH",
 				body: JSON.stringify({ disabled: p.disabled }),
 				headers: { "Content-Type": "application/json" },
@@ -55,7 +55,7 @@ export default function UsersPage() {
 			profile?: string;
 			comment?: string;
 		}) => {
-			const r = await fetch("/api/mt/users", {
+			const r = await fetch("/api/mt/ppp", {
 				method: "PUT",
 				body: JSON.stringify(p),
 				headers: { "Content-Type": "application/json" },

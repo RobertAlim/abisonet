@@ -1,5 +1,8 @@
-// lib/routeros-rest.ts
+// lib/routeros-rest-ppp.ts
 import ky from "ky";
+import { enableProxyFromEnv } from "@/lib/fetch-proxy";
+
+enableProxyFromEnv(); // important: run before first request
 
 const baseUrl = `${
 	process.env.ROUTEROS_USE_TLS === "true" ? "https" : "http"
@@ -20,91 +23,72 @@ const api = ky.extend({
 	},
 });
 
-export type RouterOSBoolString = "true" | "false";
-
-export const asBool = (v: RouterOSBoolString | string | undefined): boolean =>
-	String(v).toLowerCase() === "true";
-
-export interface HotspotUser {
-	/** RouterOS internal record id like *1A; present in GET lists */
+// ---- PPP endpoints ----
+export interface PppSecret {
 	".id"?: string;
 	name: string;
-	password?: string; // only for creation/update
+	password?: string;
+	service?: string;
 	profile?: string;
 	comment?: string;
-	disabled?: RouterOSBoolString | string; // "true"/"false" from router
+	disabled?: string;
 }
-
-export interface HotspotUserDto {
+export interface PppSecretDto {
+	id?: string;
 	name: string;
+	service?: string | null;
 	profile?: string | null;
 	comment?: string | null;
 	disabled: boolean;
-	id?: string; // from ".id"
 }
+const b = (v?: string) => String(v ?? "false").toLowerCase() === "true";
+const toDto = (x: PppSecret): PppSecretDto => ({
+	id: x[".id"],
+	name: x.name,
+	service: x.service ?? null,
+	profile: x.profile ?? null,
+	comment: x.comment ?? null,
+	disabled: b(x.disabled),
+});
 
-function toDto(u: HotspotUser): HotspotUserDto {
-	return {
-		id: u[".id"],
-		name: u.name,
-		profile: u.profile ?? null,
-		comment: u.comment ?? null,
-		disabled: asBool(u.disabled),
-	};
-}
-
-// List users
-export async function listHotspotUsers(): Promise<HotspotUserDto[]> {
-	const res = (await api.get("ip/hotspot/user").json()) as HotspotUser[];
+export async function listPppSecrets(): Promise<PppSecretDto[]> {
+	const res = (await api.get("ppp/secret").json()) as PppSecret[];
 	return res.map(toDto);
 }
-
-// Create user
-export async function createHotspotUser(input: {
+export async function createPppSecret(input: {
 	name: string;
 	password: string;
+	service?: string;
 	profile?: string;
 	comment?: string;
-}): Promise<HotspotUserDto> {
-	const body = JSON.stringify(input);
+}): Promise<PppSecretDto> {
 	const res = (await api
-		.put("ip/hotspot/user", { body })
-		.json()) as HotspotUser;
+		.put("ppp/secret", { body: JSON.stringify(input) })
+		.json()) as PppSecret;
 	return toDto(res);
 }
-
-// Enable/Disable
-export async function setHotspotUserDisabled(
+export async function setPppSecretDisabled(
 	name: string,
 	disabled: boolean
-): Promise<HotspotUserDto> {
-	// PATCH supports name keys directly (named params allowed); otherwise resolve id first. :contentReference[oaicite:3]{index=3}
+): Promise<PppSecretDto> {
 	const res = (await api
-		.patch(`ip/hotspot/user/${encodeURIComponent(name)}`, {
+		.patch(`ppp/secret/${encodeURIComponent(name)}`, {
 			body: JSON.stringify({ disabled: disabled ? "true" : "false" }),
 		})
-		.json()) as HotspotUser;
+		.json()) as PppSecret;
 	return toDto(res);
 }
-
-// Update (profile/comment, optional password change)
-export async function updateHotspotUser(
+export async function updatePppSecret(
 	name: string,
-	patch: Partial<Pick<HotspotUser, "password" | "profile" | "comment">>
-): Promise<HotspotUserDto> {
-	const payload: Record<string, string> = {};
-	if (patch.password) payload.password = patch.password;
-	if (patch.profile) payload.profile = patch.profile;
-	if (typeof patch.comment === "string") payload.comment = patch.comment;
+	patch: Partial<Pick<PppSecret, "password" | "profile" | "comment">>
+): Promise<PppSecretDto> {
 	const res = (await api
-		.patch(`ip/hotspot/user/${encodeURIComponent(name)}`, {
-			body: JSON.stringify(payload),
+		.patch(`ppp/secret/${encodeURIComponent(name)}`, {
+			body: JSON.stringify(patch),
 		})
-		.json()) as HotspotUser;
+		.json()) as PppSecret;
 	return toDto(res);
 }
-
-// Delete
-export async function deleteHotspotUser(name: string): Promise<void> {
-	await api.delete(`ip/hotspot/user/${encodeURIComponent(name)}`);
+export async function deletePppSecret(name: string): Promise<void> {
+	await api.delete(`ppp/secret/${encodeURIComponent(name)}`);
 }
